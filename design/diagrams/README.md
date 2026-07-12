@@ -4,7 +4,6 @@ Symbols name component types, color marks boundaries, and arrows show runtime fl
 
 ## System architecture
 
-- [Editable Lucid document](https://lucid.app/lucidchart/08392134-1309-4007-83a3-354d73243093/edit)
 - [PNG export](screening-runtime-architecture.png)
 
 | Visual cue | Meaning |

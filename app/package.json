@@ -1,0 +1,22 @@
+{
+  "name": "tanuh-ai-screening-test",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "api",
+    "web",
+    "engine"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "validate:workflows": "node engine/src/cli-validate.js ../workflows",
+    "dev:api": "npm run dev -w api",
+    "dev:web": "npm run dev -w web"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
+  }
+}

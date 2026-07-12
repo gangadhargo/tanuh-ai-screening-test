@@ -1,0 +1,35 @@
+name: tanuh-ai-screening-test
+
+services:
+  api:
+    build:
+      context: ./app
+      dockerfile: api/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DB_PATH: /data/screening.db
+      WORKFLOWS_DIR: /workflows
+    volumes:
+      - screening-data:/data
+      - ./workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: ./app
+      dockerfile: web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  # Named volume: outcomes survive container recreation (the brief's "persist").
+  screening-data:

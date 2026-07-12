@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Anaemia screening for pregnant women (field setting).
+  Thresholds follow Anemia Mukt Bharat guidance for the pregnancy cohort:
+  severe below 7 g/dL; 7 to 10.9 g/dL is below the screening threshold.
+  Source: https://www.nhm.gov.in/New-Update-2025-26/Nutrition/AMB-guidelines/AMB-Abhiyaan-Guidelines.pdf
+  Screening support only; the mock result is not a diagnosis.
+  Format: engine 1. Contract: design/ARCHITECTURE_WORKSHOP.md.
+-->
+<workflow id="anemia-screening" version="1.1.0" engine="1">
+  <metadata>
+    <title lang="en">Anaemia screening (pregnant women)</title>
+    <description lang="en">Field anaemia risk screening for pregnant women using a haemoglobin value from an external test device, with an optional photo of the device reading.</description>
+    <disclaimer lang="en">Screening support only. Not a medical diagnosis. Follow programme guidance for care decisions.</disclaimer>
+    <reference href="https://www.nhm.gov.in/New-Update-2025-26/Nutrition/AMB-guidelines/AMB-Abhiyaan-Guidelines.pdf" label="Anemia Mukt Bharat Abhiyaan guidelines, National Health Mission"/>
+  </metadata>
+  <steps start="hb-entry">
+
+    <input-step id="hb-entry">
+      <prompt lang="en">Enter the haemoglobin reading</prompt>
+      <help lang="en">Take the value from the digital haemoglobinometer. You can also attach a photo of the device display.</help>
+      <field id="haemoglobin" type="number" required="true" min="2" max="25" unit="g/dL">
+        <label lang="en">Haemoglobin (g/dL)</label>
+      </field>
+      <field id="devicePhoto" type="image" required="false" accept="image/jpeg,image/png" maxSizeMb="5">
+        <label lang="en">Photo of device reading</label>
+      </field>
+      <next step="anemia-ai"/>
+    </input-step>
+
+    <ai-step id="anemia-ai" model="threshold-bands" modelVersion="^1"
+             lowConfidenceBelow="0.55" lowConfidenceStep="retest-advice"
+             onErrorStep="manual-referral">
+      <prompt lang="en">Checking anaemia risk…</prompt>
+      <input field="haemoglobin" as="value" bind="value"/>
+      <input field="devicePhoto" as="image" bind="file"/>
+      <output from="label" as="riskLabel"/>
+      <output from="score" as="riskScore"/>
+      <output from="confidence" as="riskConfidence"/>
+      <!-- AMB pregnancy cohort: severe below 7 g/dL; below 11 g/dL is under the screening threshold. -->
+      <param name="severeBelow" value="7"/>
+      <param name="moderateBelow" value="11"/>
+      <next step="triage"/>
+    </ai-step>
+
+    <branch-step id="triage">
+      <case step="urgent-referral">
+        <when source="ai" field="riskLabel" op="eq" value="severe"/>
+      </case>
+      <case step="anc-referral">
+        <when source="ai" field="riskLabel" op="eq" value="moderate"/>
+      </case>
+      <default step="above-threshold"/>
+    </branch-step>
+
+    <outcome-step id="urgent-referral" code="refer-urgent" severity="high">
+      <label lang="en">Severe anaemia risk: refer to the health facility today</label>
+      <advice lang="en">Escalate as per the severe anaemia protocol and record the referral.</advice>
+    </outcome-step>
+
+    <outcome-step id="anc-referral" code="refer-anc" severity="medium">
+      <label lang="en">Below the screening threshold: refer to the ANC clinic</label>
+      <advice lang="en">The reading is below the screening threshold for pregnancy. Refer for confirmation and management as per programme guidance.</advice>
+    </outcome-step>
+
+    <outcome-step id="retest-advice" code="retest" severity="info">
+      <label lang="en">Reading unclear: retake the measurement</label>
+      <advice lang="en">The screening check was not confident. Repeat the test or refer for confirmation.</advice>
+    </outcome-step>
+
+    <outcome-step id="manual-referral" code="manual-review" severity="medium">
+      <label lang="en">Screening check unavailable: refer for manual review</label>
+      <advice lang="en">Complete the referral on paper if needed. Do not discard the reading.</advice>
+    </outcome-step>
+
+    <outcome-step id="above-threshold" code="above-threshold" severity="low">
+      <label lang="en">At or above the screening threshold</label>
+      <advice lang="en">Share dietary advice and the next screening date as per programme guidance.</advice>
+    </outcome-step>
+
+  </steps>
+</workflow>

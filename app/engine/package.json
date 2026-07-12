@@ -1,0 +1,13 @@
+{
+  "name": "@screening/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "vitest run --config vitest.config.js"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.10.0"
+  }
+}

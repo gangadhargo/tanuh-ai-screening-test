@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Questionnaire-based NCD risk screening.
+  Questions and scores follow Part A of the Community Based Assessment Checklist
+  (CBAC), Ministry of Health and Family Welfare: age 50 or older scores 2, and a
+  combined score above 4 needs priority attention (so refer at 5 or more).
+  Source: https://aam.mohfw.gov.in/download/document/b793163e3b2e8537ac8af83effb7bfd0.pdf
+  Screening support only; the mock result is not a diagnosis.
+  Format: engine 1. Contract: design/ARCHITECTURE_WORKSHOP.md.
+-->
+<workflow id="questionnaire-risk-screening" version="1.1.0" engine="1">
+  <metadata>
+    <title lang="en">NCD risk questionnaire (CBAC-based)</title>
+    <description lang="en">Community risk questionnaire for non-communicable diseases. Each answer carries a score; the combined score drives the referral decision.</description>
+    <disclaimer lang="en">Screening support only. Not a medical diagnosis. Follow programme guidance for care decisions.</disclaimer>
+    <reference href="https://aam.mohfw.gov.in/download/document/b793163e3b2e8537ac8af83effb7bfd0.pdf" label="Community Based Assessment Checklist (CBAC), MoHFW"/>
+  </metadata>
+  <steps start="age-band">
+
+    <input-step id="age-band">
+      <prompt lang="en">What is the person's age?</prompt>
+      <field id="age" type="choice" required="true">
+        <option value="30-39" score="0"><label lang="en">30 to 39 years</label></option>
+        <option value="40-49" score="1"><label lang="en">40 to 49 years</label></option>
+        <option value="50-plus" score="2"><label lang="en">50 years or older</label></option>
+      </field>
+      <next step="tobacco"/>
+    </input-step>
+
+    <input-step id="tobacco">
+      <prompt lang="en">Do they smoke or use smokeless tobacco?</prompt>
+      <field id="tobacco" type="choice" required="true">
+        <option value="never" score="0"><label lang="en">Never</label></option>
+        <option value="past-or-occasional" score="1"><label lang="en">Used in the past or sometimes now</label></option>
+        <option value="daily" score="2"><label lang="en">Daily</label></option>
+      </field>
+      <next step="alcohol"/>
+    </input-step>
+
+    <input-step id="alcohol">
+      <prompt lang="en">Do they drink alcohol daily?</prompt>
+      <field id="alcohol" type="choice" required="true">
+        <option value="no" score="0"><label lang="en">No</label></option>
+        <option value="yes" score="1"><label lang="en">Yes</label></option>
+      </field>
+      <next step="waist"/>
+    </input-step>
+
+    <input-step id="waist">
+      <prompt lang="en">Measure the waist</prompt>
+      <help lang="en">Use the tape at the level of the navel. Bands differ for men and women on the official form.</help>
+      <field id="waist" type="choice" required="true">
+        <option value="band-0" score="0"><label lang="en">80 cm or less (women) / 90 cm or less (men)</label></option>
+        <option value="band-1" score="1"><label lang="en">81 to 90 cm (women) / 91 to 100 cm (men)</label></option>
+        <option value="band-2" score="2"><label lang="en">More than 90 cm (women) / more than 100 cm (men)</label></option>
+      </field>
+      <next step="activity"/>
+    </input-step>
+
+    <input-step id="activity">
+      <prompt lang="en">Do they do at least 150 minutes of physical activity a week?</prompt>
+      <field id="activity" type="choice" required="true">
+        <option value="active" score="0"><label lang="en">Yes</label></option>
+        <option value="insufficient" score="1"><label lang="en">No</label></option>
+      </field>
+      <next step="family-history"/>
+    </input-step>
+
+    <input-step id="family-history">
+      <prompt lang="en">Family history of high blood pressure, diabetes or heart disease?</prompt>
+      <field id="familyHistory" type="choice" required="true">
+        <option value="no" score="0"><label lang="en">No</label></option>
+        <option value="yes" score="2"><label lang="en">Yes</label></option>
+      </field>
+      <next step="ncd-risk-ai"/>
+    </input-step>
+
+    <ai-step id="ncd-risk-ai" model="weighted-score" modelVersion="^1"
+             lowConfidenceBelow="0.5" lowConfidenceStep="cho-review"
+             onErrorStep="cho-review">
+      <prompt lang="en">Calculating combined risk…</prompt>
+      <input field="age" as="age" bind="score"/>
+      <input field="tobacco" as="tobacco" bind="score"/>
+      <input field="alcohol" as="alcohol" bind="score"/>
+      <input field="waist" as="waist" bind="score"/>
+      <input field="activity" as="activity" bind="score"/>
+      <input field="familyHistory" as="familyHistory" bind="score"/>
+      <output from="label" as="riskLevel"/>
+      <output from="score" as="riskScore"/>
+      <output from="confidence" as="riskConfidence"/>
+      <!-- CBAC: a combined score above 4 needs priority attention. -->
+      <param name="referAt" value="5"/>
+      <next step="risk-branch"/>
+    </ai-step>
+
+    <branch-step id="risk-branch">
+      <case step="refer-ncd">
+        <when source="ai" field="riskLevel" op="eq" value="high-risk"/>
+      </case>
+      <case step="counsel-tobacco">
+        <all>
+          <when source="ai" field="riskLevel" op="eq" value="low-risk"/>
+          <when source="answers" field="tobacco" op="in" value="past-or-occasional,daily"/>
+        </all>
+      </case>
+      <default step="routine-advice"/>
+    </branch-step>
+
+    <outcome-step id="refer-ncd" code="refer-ncd-screening" severity="high">
+      <label lang="en">High combined risk: needs priority attention</label>
+      <advice lang="en">The combined score is above 4, which the CBAC form marks for priority attention. Refer for assessment as per programme guidance.</advice>
+    </outcome-step>
+
+    <outcome-step id="cho-review" code="manual-review" severity="medium">
+      <label lang="en">Result unclear: ask the community health officer to review</label>
+      <advice lang="en">Keep the completed answers and hand over for manual review.</advice>
+    </outcome-step>
+
+    <outcome-step id="counsel-tobacco" code="counsel-tobacco" severity="info">
+      <label lang="en">Low combined risk, but tobacco use found: counsel on quitting</label>
+      <advice lang="en">Share tobacco cessation guidance and the next screening date.</advice>
+    </outcome-step>
+
+    <outcome-step id="routine-advice" code="routine" severity="low">
+      <label lang="en">Low combined risk</label>
+      <advice lang="en">Share healthy lifestyle advice and the next screening date.</advice>
+    </outcome-step>
+
+  </steps>
+</workflow>

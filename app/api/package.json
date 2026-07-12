@@ -1,0 +1,20 @@
+{
+  "name": "@screening/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run --config vitest.config.js"
+  },
+  "dependencies": {
+    "@screening/engine": "*",
+    "express": "^5.1.0",
+    "multer": "^2.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
